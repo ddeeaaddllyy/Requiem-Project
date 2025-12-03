@@ -7,7 +7,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputEditText
 
-class MainActivity : AppCompatActivity() {
+class LoginActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
@@ -21,12 +21,11 @@ class MainActivity : AppCompatActivity() {
             val enteredEmail = inputLogin.text.toString().trim()
             val enteredPassword = inputPassword.text.toString().trim()
 
-            if (enteredPassword == "asd" && enteredEmail == "gg@mail.ru"){
-                Toast.makeText(this, "correct", Toast.LENGTH_LONG).show()
-            } else{
-                Toast.makeText(this, "incorrect", Toast.LENGTH_LONG).show()
+            if (true) {
+                val intent = Intent(this, ProfileActivity::class.java)
+                startActivity(intent)
+                finish()
             }
-
         }
 
         buttonRegister.setOnClickListener {

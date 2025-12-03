@@ -13,7 +13,7 @@
         android:theme="@style/Theme.RequiemProject">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -26,6 +26,13 @@
             android:name=".RegisterActivity"
             android:exported="false"
             android:label="register RP"
+            android:theme="@style/Theme.RequiemProject">
+        </activity>
+
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:label="Account system"
             android:theme="@style/Theme.RequiemProject">
         </activity>
     </application>
