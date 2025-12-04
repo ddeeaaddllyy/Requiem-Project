@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -14,7 +17,9 @@
 
         <activity
             android:name=".LoginActivity"
-            android:exported="true">
+            android:exported="true"
+            android:label="Log in account"
+            android:theme="@style/Theme.RequiemProject">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -29,12 +34,14 @@
             android:theme="@style/Theme.RequiemProject">
         </activity>
 
+
         <activity
-            android:name=".ProfileActivity"
+            android:name=".MainActivity"
             android:exported="false"
-            android:label="Account system"
-            android:theme="@style/Theme.RequiemProject">
+            android:label="Main menu"
+            android:theme="@style/Theme.RequiemProject" >
         </activity>
+
     </application>
 
 </manifest>
