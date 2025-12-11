@@ -12,14 +12,17 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 class SolutionBottomSheet : BottomSheetDialogFragment() {
 
     lateinit var contentText: TextView
+    lateinit var questionTitle: TextView
     lateinit var closeButton: Button
 
     companion object {
         const val ARG_SOLUTION = "arg_solution"
+        const val ARG_QUESTION = "arg_question"
 
-        fun newInstance(solution: String) : SolutionBottomSheet {
+        fun newInstance(question: String, solution: String) : SolutionBottomSheet {
             val fragment = SolutionBottomSheet()
             val args = Bundle()
+            args.putString(ARG_QUESTION, question)
             args.putString(ARG_SOLUTION, solution)
             fragment.arguments = args
             return fragment
@@ -38,12 +41,15 @@ class SolutionBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val solutionText = arguments?.getString(ARG_SOLUTION) ?: "Load error"
+        val solutionText = arguments?.getString(ARG_SOLUTION) ?: "Load error. . ."
+        val questionText = arguments?.getString(ARG_QUESTION) ?: "Load error. . ."
 
+        questionTitle = view.findViewById(R.id.question_sheet_title)
         contentText = view.findViewById(R.id.text_solution_content)
         closeButton = view.findViewById(R.id.button_close_sheet)
 
         contentText.text = solutionText
+        questionTitle.text = questionText
 
         closeButton.setOnClickListener {
             dismiss()

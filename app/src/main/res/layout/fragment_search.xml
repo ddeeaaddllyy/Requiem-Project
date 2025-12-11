@@ -90,17 +90,17 @@
         app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@android:layout/simple_list_item_1"/>
 
-    <TextView
-        android:id="@+id/text_no_results"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Нет результатов. Попробуйте изменить запрос."
-        android:textColor="#B71C1C"
-        android:textStyle="italic"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/card_search"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="40dp"/>
+<!--    <TextView-->
+<!--        android:id="@+id/text_no_results"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:text="Нет результатов. Попробуйте изменить запрос."-->
+<!--        android:textColor="#B71C1C"-->
+<!--        android:textStyle="italic"-->
+<!--        android:visibility="gone"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/card_search"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        android:layout_marginTop="40dp"/>-->
 
 </androidx.constraintlayout.widget.ConstraintLayout>

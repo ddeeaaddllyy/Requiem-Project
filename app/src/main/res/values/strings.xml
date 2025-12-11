@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">RequiemProject</string>
     <string name="create_account_button_text">СОЗДАТЬ АККАУНТ</string>
+    <string name="user_avatar">User\'s avatar</string>
 </resources>

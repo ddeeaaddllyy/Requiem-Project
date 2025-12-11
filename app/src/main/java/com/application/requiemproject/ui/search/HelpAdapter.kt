@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.graphics.toColorInt
+import com.application.requiemproject.R
 
 class HelpAdapter(
     private var items: List<HelpItem>,
@@ -16,23 +17,20 @@ class HelpAdapter(
     lateinit var textView: TextView
 
     class HelpViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val titleText: TextView = view.findViewById(android.R.id.text1)
+        val titleText: TextView = view.findViewById(R.id.text_question_title)
     }
 
     override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int
-    ): HelpAdapter.HelpViewHolder {
+    ): HelpViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_1, parent, false)
-
-        textView = view.findViewById(android.R.id.text1)
-        textView.setTextColor("#F5F5F5".toColorInt())
+            .inflate(R.layout.item_help_question, parent, false)
 
         return HelpViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: HelpAdapter.HelpViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: HelpViewHolder, position: Int) {
         val item = items[position]
         holder.titleText.text = item.question
 
@@ -42,7 +40,6 @@ class HelpAdapter(
     }
 
     override fun getItemCount(): Int = items.size
-
 
     @SuppressLint("NotifyDataSetChanged")
     fun updateList(newList: List<HelpItem>) {
