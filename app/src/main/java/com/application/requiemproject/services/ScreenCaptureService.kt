@@ -1,10 +1,8 @@
 package com.application.requiemproject.services
 
-import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
@@ -18,11 +16,14 @@ import android.os.HandlerThread
 import android.os.IBinder
 import android.util.Log
 import android.view.WindowManager
-import com.application.requiemproject.R
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import androidx.core.graphics.createBitmap
+import com.application.requiemproject.notifications.NotificationActions
+import com.application.requiemproject.notifications.NotificationChannelManager
+import com.application.requiemproject.notifications.NotificationIds
+import com.application.requiemproject.notifications.NotificationsFactory
 
 open class ScreenCaptureService: Service() {
 
@@ -30,25 +31,36 @@ open class ScreenCaptureService: Service() {
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
     private lateinit var projectionManager: MediaProjectionManager
+    private lateinit var notificationsFactory: NotificationsFactory
+    private lateinit var notificationChannelManager: NotificationChannelManager
     private var backgroundHandler: Handler? = null
     private var backgroundThread: HandlerThread? = null
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private var lastProcessTime = 0L
+    private var isRunning = true
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        createNotificationChannel()
+        notificationsFactory = NotificationsFactory(context = this)
+        notificationChannelManager = NotificationChannelManager(context = this)
+        notificationChannelManager.createNotificationChannel()
         startBackgroundThread()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = createNotification()
+        val notification = notificationsFactory.createNotification(isRunning)
+
+        if (intent?.action == NotificationActions.TOGGLE_CAPTURE) {
+            isRunning = !isRunning
+            updateNotification()
+            return START_NOT_STICKY
+        }
 
         startForeground(
-            NOTIFICATION_ID,
+            NotificationIds.SCREEN_CAPTURE,
             notification,
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         )
@@ -61,7 +73,7 @@ open class ScreenCaptureService: Service() {
 
             mediaProjection?.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
-                    Log.e("SERVICE_DEBUG", "MediaProjection остановлен системой!")
+                    Log.e("SERVICE_DEBUG", "MediaProjection остановлен системой")
                 }
             }, backgroundHandler)
 
@@ -72,6 +84,13 @@ open class ScreenCaptureService: Service() {
 
         return START_NOT_STICKY
     }
+
+    private fun updateNotification() {
+        val notification = notificationsFactory.createNotification(isRunning)
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NotificationIds.SCREEN_CAPTURE, notification)
+    }
+
 
     private fun setupVirtualDisplay() {
         val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -116,7 +135,7 @@ open class ScreenCaptureService: Service() {
         }, backgroundHandler)
     }
 
-    private fun processImage(image: android.media.Image){
+    private fun processImage(image: android.media.Image) {
         val bitmap = imageToBitmap(image)
         image.close()
 
@@ -129,7 +148,6 @@ open class ScreenCaptureService: Service() {
                 val resultText = visionText.text
                 if (resultText.isNotEmpty()) {
                     Log.e("TEXT_DETECTED", "Найден текст:\n$resultText")
-                    Log.e("TEXT_DETECTED", "-----------------------------")
                 } else {
                     Log.e("TEXT_DETECTED", "Текст не найден")
                 }
@@ -159,26 +177,6 @@ open class ScreenCaptureService: Service() {
         }
     }
 
-    protected fun createNotification(): Notification {
-        val notification = Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_24)
-            .setContentTitle("Screen capture service is working")
-            .setContentText("If u wanna stop it you should do it in the app")
-            .build()
-
-        return notification
-    }
-
-    protected fun createNotificationChannel(){
-        val channelName = "Screen Capture Service"
-        val channel = NotificationChannel(CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_HIGH)
-            .apply {
-            description = "description"
-        }
-
-        val notificationManager: NotificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-    }
 
     private fun imageToBitmap(image: android.media.Image): android.graphics.Bitmap? {
         val planes = image.planes
@@ -203,11 +201,6 @@ open class ScreenCaptureService: Service() {
         virtualDisplay?.release()
         mediaProjection?.stop()
         imageReader?.close()
-    }
-
-    companion object {
-        private const val CHANNEL_ID = "screen_capture_channel"
-        private const val NOTIFICATION_ID = 1
     }
 
 }
