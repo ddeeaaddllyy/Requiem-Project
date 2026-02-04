@@ -4,8 +4,8 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Context.NOTIFICATION_SERVICE
 import android.content.Intent
-import androidx.core.content.ContextCompat.getSystemService
 import com.application.requiemproject.R
 import com.application.requiemproject.services.ScreenCaptureService
 
@@ -36,11 +36,11 @@ open class NotificationsFactory(
             .build()
     }
 
-//    private fun updateNotification(running: Boolean) {
-//        val notification = createNotification(running)
-//        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-//        manager.notify(NotificationIds.SCREEN_CAPTURE, notification)
-//    }
+    open fun updateNotification(running: Boolean) {
+        val notification = createNotification(running)
+        val manager = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NotificationIds.SCREEN_CAPTURE, notification)
+    }
 
     private fun toggleIntent(): PendingIntent {
         val intent = Intent(context, ScreenCaptureService::class.java).apply {

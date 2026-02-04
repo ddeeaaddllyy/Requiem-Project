@@ -1,7 +1,5 @@
 package com.application.requiemproject.services
 
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -55,7 +53,7 @@ open class ScreenCaptureService: Service() {
 
         if (intent?.action == NotificationActions.TOGGLE_CAPTURE) {
             isRunning = !isRunning
-            updateNotification()
+            notificationsFactory.updateNotification(running = isRunning)
             return START_NOT_STICKY
         }
 
@@ -83,12 +81,6 @@ open class ScreenCaptureService: Service() {
         }
 
         return START_NOT_STICKY
-    }
-
-    private fun updateNotification() {
-        val notification = notificationsFactory.createNotification(isRunning)
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NotificationIds.SCREEN_CAPTURE, notification)
     }
 
 
