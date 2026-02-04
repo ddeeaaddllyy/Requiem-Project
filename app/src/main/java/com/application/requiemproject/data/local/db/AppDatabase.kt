@@ -11,11 +11,11 @@ import com.application.requiemproject.data.local.entities.User
 
 @TypeConverters(value = [RoomTypeConverters::class])
 @Database(entities = [User::class], version = 1)
-abstract class AppDatabase: RoomDatabase() {
+public abstract class AppDatabase: RoomDatabase() {
 
     abstract fun userDao(): UserDao
 
-    companion object {
+    public companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
