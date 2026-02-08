@@ -13,7 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.application.requiemproject.R
 import com.application.requiemproject.data.local.db.AppDatabase
 import com.application.requiemproject.ui.auth.LoginActivity
-import com.application.requiemproject.ui.auth.SessionManager
+import com.application.requiemproject.managers.SessionManager
 import kotlinx.coroutines.launch
 
 class ProfileFragment : Fragment(R.layout.fragment_profile) {

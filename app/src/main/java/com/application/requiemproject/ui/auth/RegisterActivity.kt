@@ -12,6 +12,7 @@ import com.application.requiemproject.MainActivity
 import com.application.requiemproject.R
 import com.application.requiemproject.data.local.db.AppDatabase
 import com.application.requiemproject.data.local.entities.User
+import com.application.requiemproject.managers.SessionManager
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 

@@ -1,4 +1,4 @@
-package com.application.requiemproject.ui.auth
+package com.application.requiemproject.managers
 
 import android.content.Context
 import android.content.SharedPreferences
