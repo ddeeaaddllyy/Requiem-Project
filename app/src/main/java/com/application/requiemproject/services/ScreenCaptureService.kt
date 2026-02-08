@@ -1,5 +1,6 @@
 package com.application.requiemproject.services
 
+import android.app.Activity
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -14,6 +15,11 @@ import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
 import com.application.requiemproject.notifications.NotificationIds
 import com.application.requiemproject.notifications.NotificationsFactory
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 open class ScreenCaptureService: Service() {
 
@@ -29,9 +35,9 @@ open class ScreenCaptureService: Service() {
     // THREADING
     private var backgroundHandler: Handler? = null
     private var backgroundThread: HandlerThread? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // STATE
-    private var lastProcessTime = 0L
     private var isRunning = true
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -50,8 +56,9 @@ open class ScreenCaptureService: Service() {
         // main capture
         captureManager = ScreenCaptureManager(this, projectionManager, backgroundHandler!!)
         captureManager.onBitmapCaptured = { bitmap ->
-            processCapturedBitmap(bitmap)
-
+            serviceScope.launch(Dispatchers.Default) {
+                processBitmap(bitmap)
+            }
         }
     }
 
@@ -69,8 +76,10 @@ open class ScreenCaptureService: Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         )
 
-        val resultCode = intent?.getIntExtra("RESULT_CODE", -1) ?: -1
-        val data = intent?.getParcelableExtra<Intent>("DATA")
+        val resultCode = intent?.getIntExtra("RESULT_CODE", Activity.RESULT_CANCELED)
+            ?: Activity.RESULT_CANCELED
+        val data = intent?.getParcelableExtra("DATA", Intent::class.java)
+
         if (resultCode == -1 && data != null) {
             captureManager.startCapture(resultCode, data)
         }
@@ -78,20 +87,10 @@ open class ScreenCaptureService: Service() {
         return START_NOT_STICKY
     }
 
-    private fun processCapturedBitmap(bitmap: android.graphics.Bitmap) {
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - lastProcessTime >= 1000) {
-            lastProcessTime = currentTime
-
-            ocrRepository.recognizeText(
-                bitmap = bitmap,
-                onResult = { text ->
-                    if (text.isNotEmpty()) Log.e("TEXT_DETECTED", "Текст: $text")
-                },
-                onError = { error ->
-                    Log.e("TEXT_ERROR", error)
-                }
-            )
+    private suspend fun processBitmap(bitmap: android.graphics.Bitmap) {
+        val text = ocrRepository.recognizeText(bitmap)
+        if (text.isNotEmpty()) {
+            Log.e("SCREEN CAPTURE SERVICE", "Captured text: \n$text")
         }
     }
 
@@ -104,6 +103,7 @@ open class ScreenCaptureService: Service() {
     override fun onDestroy() {
         super.onDestroy()
         captureManager.stopCapture()
+        serviceScope.cancel()
         backgroundThread?.quitSafely()
         try {
             backgroundThread?.join()

@@ -2,6 +2,7 @@ package com.application.requiemproject.managers
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -22,8 +23,10 @@ open class ScreenCaptureManager(
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
+    private var lastProcessTime: Long = 0L
+    private val minIntervalMs: Long = 2000L
 
-    var onBitmapCaptured: ((android.graphics.Bitmap) -> Unit)? = null
+    var onBitmapCaptured: ((Bitmap) -> Unit)? = null
 
     public fun startCapture(resultCode: Int, resultData: Intent) {
         mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
@@ -54,15 +57,23 @@ open class ScreenCaptureManager(
         )
 
         imageReader?.setOnImageAvailableListener({ reader ->
-            val image = reader.acquireLatestImage()
-            if (image != null) {
+            val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+
+            val currentTime = System.currentTimeMillis()
+
+            if (currentTime - lastProcessTime >= minIntervalMs) {
+                lastProcessTime = currentTime
+
                 val bitmap = ImageUtils.imageToBitmap(image)
                 image.close()
-
                 if (bitmap != null) {
                     onBitmapCaptured?.invoke(bitmap)
                 }
+
+            } else {
+                image.close()
             }
+
         }, backgroundHandler)
     }
 
