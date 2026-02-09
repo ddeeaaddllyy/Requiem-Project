@@ -5,10 +5,12 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.application.requiemproject.data.repository.OCRRepository
 import com.application.requiemproject.managers.ScreenCaptureManager
 import com.application.requiemproject.notifications.NotificationActions
@@ -62,6 +64,7 @@ open class ScreenCaptureService: Service() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         
         val notification = notificationsFactory.createNotification(isRunning)
@@ -90,7 +93,7 @@ open class ScreenCaptureService: Service() {
     private suspend fun processBitmap(bitmap: android.graphics.Bitmap) {
         val text = ocrRepository.recognizeText(bitmap)
         if (text.isNotEmpty()) {
-            Log.e("SCREEN CAPTURE SERVICE", "Captured text: \n$text")
+            Log.e("SCREEN CAPTURE SERVICE", "Captured text: \n${text}")
         }
     }
 
