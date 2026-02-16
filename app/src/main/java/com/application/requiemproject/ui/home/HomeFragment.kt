@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION
+import android.provider.Settings.canDrawOverlays
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
@@ -18,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.application.requiemproject.R
 import com.application.requiemproject.services.ScreenCaptureService
+import androidx.core.net.toUri
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
@@ -36,10 +39,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         ActivityResultContracts.RequestPermission()
     ) { result ->
         if (result) {
-            Toast.makeText(requireContext(), "permission RECEIVED", Toast.LENGTH_SHORT)
+            Toast.makeText(requireContext(), "notification permission RECEIVED", Toast.LENGTH_SHORT)
                 .show()
         } else {
-            Toast.makeText(requireContext(), "permission DENIED", Toast.LENGTH_SHORT)
+            Toast.makeText(requireContext(), "notification permission DENIED", Toast.LENGTH_SHORT)
                 .show()
         }
 
@@ -55,16 +58,26 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val startButton = view.findViewById<Button>(R.id.button_start_translation)
         startButton.setOnClickListener {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (
-                    ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-                {
-                    requestScreenCapture()
-                } else {
+                if (ContextCompat.checkSelfPermission(
+                        requireContext(),
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
                     notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    return@setOnClickListener
                 }
-            } else {
-                requestScreenCapture()
             }
+
+            if (!canDrawOverlays(requireContext())) {
+                val intent = Intent(
+                    ACTION_MANAGE_OVERLAY_PERMISSION,
+                    "package:${requireContext().packageName}".toUri()
+                )
+                startActivity(intent)
+                return@setOnClickListener
+            }
+
+            requestScreenCapture()
         }
     }
 

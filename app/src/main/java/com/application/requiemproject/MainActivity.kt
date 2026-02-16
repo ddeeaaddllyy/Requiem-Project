@@ -44,7 +44,7 @@ class MainActivity: AppCompatActivity() {
             .setIntent(searchIntent)
             .build()
 
-        lifecycleScope.launch(Dispatchers.Main) {
+        lifecycleScope.launch(Dispatchers.IO) {
             val shortcutManager = getSystemService(ShortcutManager::class.java)
             shortcutManager.dynamicShortcuts = listOf(
                 shortcutProfile,
