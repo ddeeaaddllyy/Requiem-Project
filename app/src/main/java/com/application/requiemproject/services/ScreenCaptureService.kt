@@ -9,9 +9,9 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
-import android.util.Log
 import androidx.annotation.RequiresApi
 import com.application.requiemproject.data.repository.OCRRepository
+import com.application.requiemproject.managers.OverlayManager
 import com.application.requiemproject.managers.ScreenCaptureManager
 import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 open class ScreenCaptureService: Service() {
 
@@ -29,6 +30,7 @@ open class ScreenCaptureService: Service() {
     private lateinit var captureManager: ScreenCaptureManager
     private val ocrRepository = OCRRepository()
     private lateinit var projectionManager: MediaProjectionManager
+    private lateinit var overlayManager: OverlayManager
 
     // NOTIFICATIONS
     private lateinit var notificationsFactory: NotificationsFactory
@@ -49,6 +51,7 @@ open class ScreenCaptureService: Service() {
         startBackgroundThread()
 
         projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        overlayManager = OverlayManager(applicationContext)
 
         // notifications
         notificationsFactory = NotificationsFactory(context = this)
@@ -85,6 +88,7 @@ open class ScreenCaptureService: Service() {
 
         if (resultCode == -1 && data != null) {
             captureManager.startCapture(resultCode, data)
+            overlayManager.showOverlay()
         }
 
         return START_NOT_STICKY
@@ -92,8 +96,9 @@ open class ScreenCaptureService: Service() {
 
     private suspend fun processBitmap(bitmap: android.graphics.Bitmap) {
         val text = ocrRepository.recognizeText(bitmap)
-        if (text.isNotEmpty()) {
-            Log.e("SCREEN CAPTURE SERVICE", "Captured text: \n${text}")
+
+        withContext(Dispatchers.Main) {
+            overlayManager.updateTextOnScreen(text)
         }
     }
 
@@ -108,6 +113,7 @@ open class ScreenCaptureService: Service() {
         captureManager.stopCapture()
         serviceScope.cancel()
         backgroundThread?.quitSafely()
+        overlayManager.removeOverlay()
         try {
             backgroundThread?.join()
         } catch (e: InterruptedException) {
