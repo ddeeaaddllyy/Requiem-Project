@@ -6,80 +6,159 @@ import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.media.Image
 import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Handler
 import android.util.Log
+import android.view.WindowInsets
 import android.view.WindowManager
-import com.application.requiemproject.utils.ImageUtils
 
 open class ScreenCaptureManager(
     private val context: Context,
     private val projectionManager: MediaProjectionManager,
     private val backgroundHandler: Handler
-)
-{
+) {
+
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var imageReader: ImageReader? = null
+
     private var lastProcessTime: Long = 0L
     private val minIntervalMs: Long = 2000L
 
+    private var screenWidth = 0
+    private var screenHeight = 0
+    private var density = 0
+
     var onBitmapCaptured: ((Bitmap) -> Unit)? = null
 
-    public fun startCapture(resultCode: Int, resultData: Intent) {
+    fun startCapture(resultCode: Int, resultData: Intent) {
         mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
-        mediaProjection?.registerCallback(object  : MediaProjection.Callback() {
-            override fun onStop() {
-                Log.e("CAPTURE", "onStop")
-            }
-        }, backgroundHandler )
 
-        backgroundHandler.postDelayed({
-            virtualDisplay()
-        }, 500)
+        mediaProjection?.registerCallback(object: MediaProjection.Callback() {
+            override fun onStop() {
+                Log.d("ScreenCaptureManager", "fun startCapture was stopped")
+                stopCapture()
+            }
+        }, backgroundHandler)
+
+        setupVirtualDisplay()
     }
 
-    private fun virtualDisplay() {
-        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private fun setupVirtualDisplay() {
+
+        val windowManager =
+            context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
         val metrics = windowManager.currentWindowMetrics
-        val width = metrics.bounds.width()
-        val height = metrics.bounds.height()
-        val density = context.resources.displayMetrics.densityDpi
+        val bounds = metrics.bounds
 
-        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        screenWidth = bounds.width()
+        screenHeight = bounds.height()
+        density = context.resources.displayMetrics.densityDpi
 
-        virtualDisplay = mediaProjection?.createVirtualDisplay(
-            "ScreenCapture", width, height, density,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            imageReader?.surface, null, backgroundHandler
+        imageReader?.close()
+
+        imageReader = ImageReader.newInstance(
+            screenWidth,
+            screenHeight,
+            PixelFormat.RGBA_8888,
+            2
         )
 
-        imageReader?.setOnImageAvailableListener({ reader ->
-            val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+        virtualDisplay = mediaProjection?.createVirtualDisplay(
+            "ScreenCapture",
+            screenWidth,
+            screenHeight,
+            density,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            imageReader?.surface,
+            null,
+            backgroundHandler
+        )
 
-            val currentTime = System.currentTimeMillis()
-
-            if (currentTime - lastProcessTime >= minIntervalMs) {
-                lastProcessTime = currentTime
-
-                val bitmap = ImageUtils.imageToBitmap(image)
-                image.close()
-                if (bitmap != null) {
-                    onBitmapCaptured?.invoke(bitmap)
-                }
-
-            } else {
-                image.close()
-            }
-
-        }, backgroundHandler)
+        imageReader?.setOnImageAvailableListener(
+            imageListener,
+            backgroundHandler
+        )
     }
 
-    open fun stopCapture() {
+    private val imageListener = ImageReader.OnImageAvailableListener { reader ->
+
+        val image = reader.acquireLatestImage() ?: return@OnImageAvailableListener
+
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastProcessTime < minIntervalMs) {
+            image.close()
+            return@OnImageAvailableListener
+        }
+
+        lastProcessTime = currentTime
+
+        val bitmap = imageToBitmapSafe(image)
+        image.close()
+
+        bitmap.let { cropped ->
+            onBitmapCaptured?.invoke(cropped)
+        }
+    }
+
+    private fun imageToBitmapSafe(image: Image): Bitmap {
+
+        val plane = image.planes[0]
+        val buffer = plane.buffer
+
+        val pixelStride = plane.pixelStride
+        val rowStride = plane.rowStride
+        val rowPadding = rowStride - pixelStride * screenWidth
+
+        val bitmap = Bitmap.createBitmap(
+            screenWidth + rowPadding / pixelStride,
+            screenHeight,
+            Bitmap.Config.ARGB_8888
+        )
+
+        bitmap.copyPixelsFromBuffer(buffer)
+
+        return cropStatusBar(bitmap)
+    }
+
+    private fun cropStatusBar(bitmap: Bitmap): Bitmap {
+
+        val windowManager =
+            context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+        val metrics = windowManager.currentWindowMetrics
+        val insets = metrics.windowInsets.getInsetsIgnoringVisibility(
+            WindowInsets.Type.statusBars()
+        )
+
+        val statusBarHeight = insets.top
+
+        if (statusBarHeight <= 0 || statusBarHeight >= bitmap.height) {
+            return bitmap
+        }
+
+        val safeHeight = bitmap.height - statusBarHeight
+
+        return Bitmap.createBitmap(
+            bitmap,
+            0,
+            statusBarHeight,
+            bitmap.width,
+            safeHeight
+        )
+    }
+
+    fun stopCapture() {
         virtualDisplay?.release()
         imageReader?.close()
         mediaProjection?.stop()
+
+        virtualDisplay = null
+        imageReader = null
+        mediaProjection = null
     }
 }
