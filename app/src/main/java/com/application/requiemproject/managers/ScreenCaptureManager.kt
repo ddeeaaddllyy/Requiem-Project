@@ -3,6 +3,7 @@ package com.application.requiemproject.managers
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Bitmap.createBitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -14,6 +15,7 @@ import android.os.Handler
 import android.util.Log
 import android.view.WindowInsets
 import android.view.WindowManager
+import com.application.requiemproject.utils.ImagePreprocessor
 
 open class ScreenCaptureManager(
     private val context: Context,
@@ -33,6 +35,10 @@ open class ScreenCaptureManager(
     private var density = 0
 
     var onBitmapCaptured: ((Bitmap) -> Unit)? = null
+    var onProcessedCaptured: ((Bitmap, Float, Int) -> Unit)? = null
+
+    private val scaleFactor = 1.5f
+
 
     fun startCapture(resultCode: Int, resultData: Intent) {
         mediaProjection = projectionManager.getMediaProjection(resultCode, resultData)
@@ -86,7 +92,6 @@ open class ScreenCaptureManager(
     }
 
     private val imageListener = ImageReader.OnImageAvailableListener { reader ->
-
         val image = reader.acquireLatestImage() ?: return@OnImageAvailableListener
 
         val currentTime = System.currentTimeMillis()
@@ -94,15 +99,30 @@ open class ScreenCaptureManager(
             image.close()
             return@OnImageAvailableListener
         }
-
         lastProcessTime = currentTime
 
-        val bitmap = imageToBitmapSafe(image)
+        val rawBitmap = imageToBitmapSafe(image)
         image.close()
 
-        bitmap.let { cropped ->
-            onBitmapCaptured?.invoke(cropped)
-        }
+        val statusBarHeight = calculateStatusBarHeight()
+        val cropped = cropBitmap(rawBitmap, statusBarHeight)
+
+        val processed = ImagePreprocessor.prepare(cropped, scaleFactor)
+
+        onProcessedCaptured?.invoke(processed, scaleFactor, statusBarHeight)
+    }
+
+    private fun calculateStatusBarHeight(): Int {
+        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val metrics = windowManager.currentWindowMetrics
+        return metrics.windowInsets.getInsetsIgnoringVisibility(
+            WindowInsets.Type.statusBars()
+        ).top
+    }
+
+    private fun cropBitmap(bitmap: Bitmap, offset: Int): Bitmap {
+        if (offset <= 0 || offset >= bitmap.height) return bitmap
+        return createBitmap(bitmap, 0, offset, bitmap.width, bitmap.height - offset)
     }
 
     private fun imageToBitmapSafe(image: Image): Bitmap {
@@ -114,7 +134,7 @@ open class ScreenCaptureManager(
         val rowStride = plane.rowStride
         val rowPadding = rowStride - pixelStride * screenWidth
 
-        val bitmap = Bitmap.createBitmap(
+        val bitmap = createBitmap(
             screenWidth + rowPadding / pixelStride,
             screenHeight,
             Bitmap.Config.ARGB_8888
@@ -143,7 +163,7 @@ open class ScreenCaptureManager(
 
         val safeHeight = bitmap.height - statusBarHeight
 
-        return Bitmap.createBitmap(
+        return createBitmap(
             bitmap,
             0,
             statusBarHeight,
@@ -152,7 +172,7 @@ open class ScreenCaptureManager(
         )
     }
 
-    fun stopCapture() {
+    open fun stopCapture() {
         virtualDisplay?.release()
         imageReader?.close()
         mediaProjection?.stop()

@@ -16,10 +16,14 @@ import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
 import com.application.requiemproject.notifications.NotificationIds
 import com.application.requiemproject.notifications.NotificationsFactory
+import com.google.android.gms.tasks.CancellationTokenSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -42,6 +46,7 @@ open class ScreenCaptureService: Service() {
 
     // STATE
     private var isRunning = true
+    private var ocrJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -59,15 +64,27 @@ open class ScreenCaptureService: Service() {
 
         // main capture
         captureManager = ScreenCaptureManager(this, projectionManager, backgroundHandler!!)
-        captureManager.onBitmapCaptured = { bitmap ->
-            serviceScope.launch(Dispatchers.Default) {
-                processBitmap(bitmap)
+        captureManager.onProcessedCaptured = { bitmap, scale, offset ->
+            ocrJob?.cancel()
+
+
+            ocrJob = serviceScope.launch(Dispatchers.Default) {
+                try {
+                    val textBlocks = ocrRepository.recognizeText(bitmap, scale, offset)
+
+                    ensureActive()
+
+                    withContext(Dispatchers.Main) {
+                        overlayManager.updateTextOnScreen(textBlocks)
+                    }
+                } finally {
+                    bitmap.recycle()
+                }
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        
         val notification = notificationsFactory.createNotification(isRunning)
         if (intent?.action == NotificationActions.TOGGLE_CAPTURE) {
             isRunning = !isRunning
@@ -97,13 +114,13 @@ open class ScreenCaptureService: Service() {
         return START_NOT_STICKY
     }
 
-    private suspend fun processBitmap(bitmap: android.graphics.Bitmap) {
-        val text = ocrRepository.recognizeText(bitmap)
-
-        withContext(Dispatchers.Main) {
-            overlayManager.updateTextOnScreen(text)
-        }
-    }
+//    private suspend fun processBitmap(bitmap: android.graphics.Bitmap) {
+//        val text = ocrRepository.recognizeText(bitmap)
+//
+//        withContext(Dispatchers.Main) {
+//            overlayManager.updateTextOnScreen(text)
+//        }
+//    }
 
     private fun startBackgroundThread() {
         backgroundThread = HandlerThread("CameraBackground")
