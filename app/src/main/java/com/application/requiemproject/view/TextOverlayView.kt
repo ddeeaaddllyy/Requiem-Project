@@ -6,7 +6,9 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.Log
 import android.view.View
+import android.view.WindowInsets
 import com.application.requiemproject.model.TextBlock
+import androidx.core.graphics.toColorInt
 
 class TextOverlayView(
     context: Context
@@ -22,7 +24,7 @@ class TextOverlayView(
     }
 
     private val bgPaint = Paint().apply {
-        color = Color.parseColor("#80000000")
+        color = "#80000000".toColorInt()
         style = Paint.Style.FILL
     }
 

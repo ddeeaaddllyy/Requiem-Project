@@ -57,7 +57,6 @@ class OverlayManager(
 
         try {
             windowManager.addView(overlayView, params)
-            Log.d("OverlayManager", "Оверлей успешно добавлен на экран по: \nparams: ${params}\n overlayView:${overlayView}")
         } catch (e: Exception) {
             Log.e("OverlayManager", "Ошибка добавления оверлея: ${e.message}")
             e.printStackTrace()
@@ -79,5 +78,6 @@ class OverlayManager(
         }
         overlayView = null
         drawView = null
+        drawView?.setRect(emptyList())
     }
 }
