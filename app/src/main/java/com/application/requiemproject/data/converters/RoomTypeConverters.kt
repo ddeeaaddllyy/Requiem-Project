@@ -2,6 +2,11 @@ package com.application.requiemproject.data.converters
 
 import androidx.room.TypeConverter
 
+/**
+ * First of all, this converter is needed to convert a list into a string for the room database.
+ * In this application, it is used to write all the values from a specific account's "Achievements"
+ * to its database.
+ */
 class RoomTypeConverters {
 
     @TypeConverter
