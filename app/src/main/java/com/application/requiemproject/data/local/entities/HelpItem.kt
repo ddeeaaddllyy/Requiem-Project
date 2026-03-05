@@ -1,4 +1,4 @@
-package com.application.requiemproject.ui.search.support.data
+package com.application.requiemproject.data.local.entities
 
 data class HelpItem(
     val id: Long = 0,

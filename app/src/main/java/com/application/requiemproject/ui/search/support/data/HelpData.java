@@ -1,6 +1,8 @@
 package com.application.requiemproject.ui.search.support.data;
 
 
+import com.application.requiemproject.data.local.entities.HelpItem;
+
 import java.util.ArrayList;
 import java.util.List;
 

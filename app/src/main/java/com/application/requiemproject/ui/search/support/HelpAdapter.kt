@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.application.requiemproject.R
-import com.application.requiemproject.ui.search.support.data.HelpItem
+import com.application.requiemproject.data.local.entities.HelpItem
 
 class HelpAdapter(
     private var items: List<HelpItem>,
