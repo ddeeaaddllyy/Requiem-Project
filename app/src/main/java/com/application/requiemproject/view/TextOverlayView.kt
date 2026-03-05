@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.Log
 import android.view.View
-import android.view.WindowInsets
 import com.application.requiemproject.model.TextBlock
 import androidx.core.graphics.toColorInt
 
@@ -22,12 +21,10 @@ class TextOverlayView(
         textAlign = Paint.Align.CENTER
         setShadowLayer(5f, 0f, 0f, Color.GRAY)
     }
-
     private val bgPaint = Paint().apply {
         color = "#80000000".toColorInt()
         style = Paint.Style.FILL
     }
-
     private var textBlock: List<TextBlock> = emptyList()
 
     fun setRect(newRect: List<TextBlock>) {
@@ -37,6 +34,7 @@ class TextOverlayView(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (textBlock.isEmpty()) return
 
         for (block in textBlock) {
             try {

@@ -28,13 +28,12 @@ open class ScreenCaptureManager(
     private var imageReader: ImageReader? = null
 
     private var lastProcessTime: Long = 0L
-    private val minIntervalMs: Long = 2000L
+    private val minIntervalMs: Long = 1000L
 
     private var screenWidth = 0
     private var screenHeight = 0
     private var density = 0
 
-    var onBitmapCaptured: ((Bitmap) -> Unit)? = null
     var onProcessedCaptured: ((Bitmap, Float, Int) -> Unit)? = null
 
     private val scaleFactor = 1.5f
@@ -45,7 +44,7 @@ open class ScreenCaptureManager(
 
         mediaProjection?.registerCallback(object: MediaProjection.Callback() {
             override fun onStop() {
-                Log.d("ScreenCaptureManager", "fun startCapture was stopped")
+                Log.i("ScreenCaptureManager", "fun startCapture was stopped")
                 stopCapture()
             }
         }, backgroundHandler)

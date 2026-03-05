@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
+import android.util.Log
 import com.application.requiemproject.data.repository.OCRRepository
 import com.application.requiemproject.managers.OverlayManager
 import com.application.requiemproject.managers.ScreenCaptureManager
@@ -16,7 +17,6 @@ import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
 import com.application.requiemproject.notifications.NotificationIds
 import com.application.requiemproject.notifications.NotificationsFactory
-import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,9 +64,13 @@ open class ScreenCaptureService: Service() {
 
         // main capture
         captureManager = ScreenCaptureManager(this, projectionManager, backgroundHandler!!)
-        captureManager.onProcessedCaptured = { bitmap, scale, offset ->
-            ocrJob?.cancel()
+        captureManager.onProcessedCaptured = onProcessedCaptured@{ bitmap, scale, offset ->
+            if (ocrJob?.isActive == true) {
+                bitmap.recycle()
+                return@onProcessedCaptured
+            }
 
+            ocrJob?.cancel()
 
             ocrJob = serviceScope.launch(Dispatchers.Default) {
                 try {
@@ -77,6 +81,12 @@ open class ScreenCaptureService: Service() {
                     withContext(Dispatchers.Main) {
                         overlayManager.updateTextOnScreen(textBlocks)
                     }
+
+                } catch (e: Exception) {
+                    if (e !is CancellationException) {
+                        Log.d("ScreenCaptureService", "Error in onCreate(): ${e.message}")
+                    }
+
                 } finally {
                     bitmap.recycle()
                 }
@@ -89,6 +99,10 @@ open class ScreenCaptureService: Service() {
         if (intent?.action == NotificationActions.TOGGLE_CAPTURE) {
             isRunning = !isRunning
             notificationsFactory.updateNotification(running = isRunning)
+            if (!isRunning) {
+                captureManager.stopCapture()
+                overlayManager.removeOverlay()
+            }
         }
 
         startForeground(
@@ -114,14 +128,6 @@ open class ScreenCaptureService: Service() {
         return START_NOT_STICKY
     }
 
-//    private suspend fun processBitmap(bitmap: android.graphics.Bitmap) {
-//        val text = ocrRepository.recognizeText(bitmap)
-//
-//        withContext(Dispatchers.Main) {
-//            overlayManager.updateTextOnScreen(text)
-//        }
-//    }
-
     private fun startBackgroundThread() {
         backgroundThread = HandlerThread("CameraBackground")
         backgroundThread?.start()
@@ -130,11 +136,13 @@ open class ScreenCaptureService: Service() {
 
     override fun onLowMemory() {
         super.onLowMemory()
-        // in future
+        Log.i("onLowMem", "LOW MEMORY")
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        isRunning = false
+        ocrJob?.cancel()
         captureManager.stopCapture()
         serviceScope.cancel()
         backgroundThread?.quitSafely()
@@ -142,7 +150,7 @@ open class ScreenCaptureService: Service() {
         try {
             backgroundThread?.join()
         } catch (e: InterruptedException) {
-            e.printStackTrace()
+            Log.e("ScreenCaptureService", "onDestroy call an error: ${e.message}\n${e.printStackTrace()}")
         }
     }
 

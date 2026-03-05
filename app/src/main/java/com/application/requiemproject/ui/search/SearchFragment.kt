@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.application.requiemproject.R
 import com.application.requiemproject.ui.search.support.HelpAdapter
 import com.application.requiemproject.ui.search.support.data.HelpData
-import com.application.requiemproject.ui.search.support.data.HelpItem
+import com.application.requiemproject.data.local.entities.HelpItem
 import com.application.requiemproject.ui.search.support.SolutionBottomSheet
 
 open class SearchFragment : Fragment(R.layout.fragment_search) {

@@ -21,7 +21,7 @@ class OverlayManager(
 
     fun showOverlay() {
         if (!Settings.canDrawOverlays(context)) {
-            Log.e("OverlayManager", "CRITICAL ERROR: application don't have 'Settings.canDrawOverlays' permission ")
+            Log.e("OverlayManager", "CRITICAL ERROR: application can't draw overlays (most likely it doesn't have 'Settings.canDrawOverlays' permission)")
             return
         }
 
@@ -58,13 +58,16 @@ class OverlayManager(
         try {
             windowManager.addView(overlayView, params)
         } catch (e: Exception) {
-            Log.e("OverlayManager", "Ошибка добавления оверлея: ${e.message}")
+            Log.e("OverlayManager", "Critical overlay error in showOverlay(): ${e.message}")
             e.printStackTrace()
         }
     }
 
     fun updateTextOnScreen(rects: List<TextBlock>) {
-        drawView?.setRect(rects)
+        drawView?.post {
+            drawView?.setRect(rects)
+        }
+
     }
 
     fun removeOverlay() {
@@ -72,12 +75,12 @@ class OverlayManager(
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                Log.e("OverlayManager", "Critical Error in removeOverlay(): $e")
+                Log.e("OverlayManager", "Critical overlay error in removeOverlay(): ${e.message}")
                 e.printStackTrace()
             }
         }
+        drawView?.setRect(emptyList())
         overlayView = null
         drawView = null
-        drawView?.setRect(emptyList())
     }
 }
