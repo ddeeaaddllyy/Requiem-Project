@@ -10,6 +10,7 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import com.application.requiemproject.model.TextBlock
 import com.application.requiemproject.view.TextOverlayView
+import com.application.requiemproject.utils.TagSet.OVERLAY_MANAGER_TAG
 
 class OverlayManager(
     private val context: Context
@@ -21,7 +22,7 @@ class OverlayManager(
 
     fun showOverlay() {
         if (!Settings.canDrawOverlays(context)) {
-            Log.e("OverlayManager", "CRITICAL ERROR: application can't draw overlays (most likely it doesn't have 'Settings.canDrawOverlays' permission)")
+            Log.e(OVERLAY_MANAGER_TAG, "CRITICAL ERROR: application can't draw overlays (most likely it doesn't have 'Settings.canDrawOverlays' permission)")
             return
         }
 
@@ -58,7 +59,7 @@ class OverlayManager(
         try {
             windowManager.addView(overlayView, params)
         } catch (e: Exception) {
-            Log.e("OverlayManager", "Critical overlay error in showOverlay(): ${e.message}")
+            Log.e(OVERLAY_MANAGER_TAG, "Critical overlay error in showOverlay(): ${e.message}")
             e.printStackTrace()
         }
     }
@@ -75,7 +76,7 @@ class OverlayManager(
             try {
                 windowManager.removeView(it)
             } catch (e: Exception) {
-                Log.e("OverlayManager", "Critical overlay error in removeOverlay(): ${e.message}")
+                Log.e(OVERLAY_MANAGER_TAG, "Critical overlay error in removeOverlay(): ${e.message}")
                 e.printStackTrace()
             }
         }

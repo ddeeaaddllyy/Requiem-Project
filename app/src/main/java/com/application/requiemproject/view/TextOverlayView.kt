@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.View
 import com.application.requiemproject.model.TextBlock
 import androidx.core.graphics.toColorInt
+import com.application.requiemproject.utils.TagSet.TEXT_OVERLAY_VIEW_TAG
 
 class TextOverlayView(
     context: Context
@@ -48,7 +49,7 @@ class TextOverlayView(
                 canvas.drawText(block.text, textX, textY, textPaint)
 
             } catch (e: Exception) {
-                Log.e("TextOverlayView", "CRITICAL ERROR - onDraw said: $e")
+                Log.e(TEXT_OVERLAY_VIEW_TAG, "CRITICAL ERROR - onDraw said: $e")
             }
 
         }

@@ -16,6 +16,7 @@ import android.util.Log
 import android.view.WindowInsets
 import android.view.WindowManager
 import com.application.requiemproject.utils.ImagePreprocessor
+import com.application.requiemproject.utils.TagSet.SCREEN_CAPTURE_MANAGER_TAG
 
 open class ScreenCaptureManager(
     private val context: Context,
@@ -44,7 +45,7 @@ open class ScreenCaptureManager(
 
         mediaProjection?.registerCallback(object: MediaProjection.Callback() {
             override fun onStop() {
-                Log.i("ScreenCaptureManager", "fun startCapture was stopped")
+                Log.i(SCREEN_CAPTURE_MANAGER_TAG, "fun startCapture was stopped")
                 stopCapture()
             }
         }, backgroundHandler)

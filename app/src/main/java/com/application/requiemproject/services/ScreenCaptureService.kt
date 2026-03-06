@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.util.Log
+import android.widget.Toast
 import com.application.requiemproject.data.repository.OCRRepository
 import com.application.requiemproject.managers.OverlayManager
 import com.application.requiemproject.managers.ScreenCaptureManager
@@ -17,6 +18,7 @@ import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
 import com.application.requiemproject.notifications.NotificationIds
 import com.application.requiemproject.notifications.NotificationsFactory
+import com.application.requiemproject.utils.TagSet.SCREEN_CAPTURE_SERVICE_TAG
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -84,7 +86,7 @@ open class ScreenCaptureService: Service() {
 
                 } catch (e: Exception) {
                     if (e !is CancellationException) {
-                        Log.d("ScreenCaptureService", "Error in onCreate(): ${e.message}")
+                        Log.d(SCREEN_CAPTURE_SERVICE_TAG, "Error in onCreate(): ${e.message}")
                     }
 
                 } finally {
@@ -136,7 +138,12 @@ open class ScreenCaptureService: Service() {
 
     override fun onLowMemory() {
         super.onLowMemory()
-        Log.i("onLowMem", "LOW MEMORY")
+        Toast.makeText(this, "You have low free memory. Be careful.", Toast.LENGTH_SHORT).show()
+        Log.i(SCREEN_CAPTURE_SERVICE_TAG, "LOW MEMORY")
+
+        // delete in future
+        Log.e(SCREEN_CAPTURE_SERVICE_TAG, "OnLowMemory is active. We have to stop")
+        onDestroy()
     }
 
     override fun onDestroy() {
@@ -150,7 +157,7 @@ open class ScreenCaptureService: Service() {
         try {
             backgroundThread?.join()
         } catch (e: InterruptedException) {
-            Log.e("ScreenCaptureService", "onDestroy call an error: ${e.message}\n${e.printStackTrace()}")
+            Log.e(SCREEN_CAPTURE_SERVICE_TAG, "onDestroy call an error: ${e.message}\n${e.printStackTrace()}")
         }
     }
 
