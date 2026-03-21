@@ -77,6 +77,7 @@ open class ScreenCaptureService: Service() {
             ocrJob = serviceScope.launch(Dispatchers.Default) {
                 try {
                     val textBlocks = ocrRepository.recognizeText(bitmap, scale, offset)
+                    val translatedText = null // in future
 
                     ensureActive()
 
