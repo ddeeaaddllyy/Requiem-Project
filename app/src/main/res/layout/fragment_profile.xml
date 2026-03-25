@@ -50,12 +50,16 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent" />
 
+            <!--
+                I want to leave the text field(TextView) empty so that there are
+                no problems with debugging or interface issues.
+                 -->
             <TextView
                 android:id="@+id/text_username"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:text="Unknown"
+                android:text=""
                 android:textColor="#F5F5F5"
                 android:textSize="18sp"
                 android:textStyle="bold"

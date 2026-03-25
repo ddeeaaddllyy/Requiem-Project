@@ -5,11 +5,13 @@ import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
+import androidx.core.graphics.scale
+import androidx.core.graphics.createBitmap
 
 object ImagePreprocessor {
     fun prepare(bitmap: Bitmap, scaleFactor: Float = 1.5f): Bitmap {
         // Convert to grayscale and increase contrast
-        val grayscaleBitmap = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val grayscaleBitmap = createBitmap(bitmap.width, bitmap.height)
         val canvas = Canvas(grayscaleBitmap)
         val paint = Paint()
 
@@ -34,6 +36,6 @@ object ImagePreprocessor {
         val width = (grayscaleBitmap.width * scaleFactor).toInt()
         val height = (grayscaleBitmap.height * scaleFactor).toInt()
 
-        return Bitmap.createScaledBitmap(grayscaleBitmap, width, height, true)
+        return grayscaleBitmap.scale(width, height)
     }
 }

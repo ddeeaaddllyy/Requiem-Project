@@ -2,6 +2,7 @@ package com.application.requiemproject.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -14,12 +15,14 @@ import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
+    private val db by lazy { AppDatabase.getDatabase(this) }
+    private val sm by lazy { SessionManager(this) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
-        val db = AppDatabase.getDatabase(this)
-        val sm = SessionManager(this)
+
         val intent = Intent(this, MainActivity::class.java)
 
         val buttonLogin = findViewById<Button>(R.id.button_login)
@@ -30,7 +33,7 @@ class LoginActivity : AppCompatActivity() {
         if (sm.isLoggedIn()) {
             startActivity(intent)
             finish()
-            return Unit
+            return
         }
 
         buttonLogin.setOnClickListener {
@@ -39,26 +42,31 @@ class LoginActivity : AppCompatActivity() {
 
             if (enteredLogin.isEmpty() || enteredPassword.isEmpty()) {
                 Toast.makeText(
-                    this,
+                    this@LoginActivity,
                     "Сначала заполните все поля",
                     Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             lifecycleScope.launch {
-                val user = db.userDao().getUserByLogin(enteredLogin)
+                try {
+                    val user = db.userDao().getUserByLogin(enteredLogin)
 
-                if (user != null && enteredPassword == user.password) {
-                    sm.saveSession(user.id)
-                    startActivity(intent)
-                    finish()
+                    if (user != null && enteredPassword == user.password) {
+                        sm.saveSession(user.id)
+                        startActivity(intent)
+                        finish()
 
-                } else {
-                    Toast.makeText(
-                        this@LoginActivity,
-                        "Неверный логин или пароль",
-                        Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(
+                            this@LoginActivity,
+                            "Неверный логин или пароль",
+                            Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Log.e("LoginActivity", "Database error: $e")
                 }
+
             }
         }
 

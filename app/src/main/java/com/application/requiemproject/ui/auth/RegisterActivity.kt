@@ -65,10 +65,9 @@ class RegisterActivity: AppCompatActivity() {
                     privilege = listOf("NEWCOMER!")
                 )
 
-                db.userDao().insertUser(newUser)
-
+                val userId = db.userDao().insertUser(newUser)
                 val sm = SessionManager(this@RegisterActivity)
-                sm.saveSession(newUser.id)
+                sm.saveSession(userId)
 
                 Toast.makeText(this@RegisterActivity, "Аккаунт создан", Toast.LENGTH_SHORT).show()
 

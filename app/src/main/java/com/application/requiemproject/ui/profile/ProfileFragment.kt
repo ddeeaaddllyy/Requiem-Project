@@ -62,9 +62,11 @@ class ProfileFragment : Fragment(R.layout.fragment_profile) {
                 val user = db.userDao().getUserById(userId)
                 if (user != null) {
                     textView.text = user.login
+                } else {
+                    textView.text = "ERROR id = $userId\n user = $user"
                 }
             }
-        }
+        } else return // нахуй надо
     }
 
 }
