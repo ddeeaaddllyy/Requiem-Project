@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.util.Log
 import android.view.View
 import com.application.requiemproject.model.TextBlock
-import androidx.core.graphics.toColorInt
 import com.application.requiemproject.utils.TagSet.TEXT_OVERLAY_VIEW_TAG
 
 class TextOverlayView(
@@ -15,22 +14,21 @@ class TextOverlayView(
 ): View(context)
 {
     private val textPaint = Paint().apply {
-        color = Color.BLACK
+        color = Color.WHITE
         textSize = 45f
-        alpha = 250
         style = Paint.Style.FILL
         isAntiAlias = true
         textAlign = Paint.Align.CENTER
         setShadowLayer(5f, 0f, 0f, Color.GRAY)
     }
     private val bgPaint = Paint().apply {
-        color = "#80000000".toColorInt()
+        color = Color.BLACK
         style = Paint.Style.FILL
     }
     private var textBlock: List<TextBlock> = emptyList()
 
-    fun setRect(newRect: List<TextBlock>) {
-        this.textBlock = newRect
+    fun setRect(newBlock: List<TextBlock>) {
+        textBlock = newBlock
         invalidate()
     }
 
