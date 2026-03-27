@@ -1,6 +1,5 @@
 package com.application.requiemproject.data.local.dao
 
-import androidx.annotation.Nullable
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -25,4 +24,7 @@ interface UserDao {
 
     @Delete
     suspend fun deleteUser(user: User)
+
+    @Query(value = "UPDATE user SET email = :email WHERE id = :userId ")
+    suspend fun updateEmail(userId: Long, email: String)
 }
