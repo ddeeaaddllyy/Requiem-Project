@@ -31,6 +31,6 @@ interface MyMemoryTranslationApi {
     suspend fun getTranslateText(
         @Query("q") text: String,
         @Query("langpair") langPair: String,
-        @Query("de") email: String = "very6igpen1s@gmail.com"
+        @Query("de") email: String? = null
     ): Response<TranslationResponse>
 }

@@ -3,6 +3,8 @@ package com.application.requiemproject.translator
 import android.util.Log
 import com.application.requiemproject.data.api.MyMemoryTranslationApi
 import com.application.requiemproject.data.api.response.TranslationResult
+import com.application.requiemproject.data.local.dao.UserDao
+import com.application.requiemproject.managers.SessionManager
 import com.application.requiemproject.model.TranslatorModel
 
 /**
@@ -11,14 +13,15 @@ import com.application.requiemproject.model.TranslatorModel
  * This translator performs network requests to fetch translated text.
  * It supports dynamic language selection via a language pair string.
  *
- * Example of language pair: "en|ru" (English → Russian)
+ * Example of language pair: "en|ru" (English -> Russian)
  *
  * @property api Retrofit API used to communicate with MyMemory service.
  */
 class MyMemoryTranslator(
-    private val api: MyMemoryTranslationApi
+    private val api: MyMemoryTranslationApi,
+    private val userDao: UserDao,
+    private val sessionManager: SessionManager
 ): TranslatorModel {
-
     /**
      * Translates given [text] using MyMemory API.
      *
@@ -36,29 +39,36 @@ class MyMemoryTranslator(
      */
     override suspend fun translate(text: String, languages: String): TranslationResult {
         return try {
-            val response = api.getTranslateText(text, languages)
+            val userId = sessionManager.getUserId()
+            val email = userDao.getEmailById(userId)
+            val response = api.getTranslateText(
+                text,
+                languages,
+                email
+            )
+
             if (!response.isSuccessful) {
-                TranslationResult.Error(
-                    message = response.errorBody()?.string() ?: "Unkown api error"
+                return TranslationResult.Error(
+                    message = response.errorBody()?.string() ?: "Unknown api error"
                 )
             }
 
             val translatedText = response.body()?.responseData?.translatedText
 
-            if (translatedText.isNullOrBlank() or translatedText.isNullOrEmpty()) {
-                TranslationResult.Error(
+            if (translatedText.isNullOrBlank()) {
+                return TranslationResult.Error(
                     message = "Empty response"
                 )
             }
 
             TranslationResult.Success(
-                text = translatedText!!
+                text = translatedText
             )
 
         } catch (e: Exception) {
-            Log.e("MyMemoryTranslator", "Exception during translation: $e")
+            Log.e("MyMemoryTranslator", "Exception during translation", e)
             TranslationResult.Error(
-                message = e.message ?: "Empty Error"
+                message = e.message ?: "Unknown error"
             )
         }
     }

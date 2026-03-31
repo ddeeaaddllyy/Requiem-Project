@@ -11,16 +11,16 @@ import android.os.HandlerThread
 import android.os.IBinder
 import android.util.Log
 import android.widget.Toast
-import com.application.requiemproject.data.api.RetrofitClient
+import com.application.requiemproject.App
+import com.application.requiemproject.data.api.response.TranslationResult
 import com.application.requiemproject.data.repository.OCRRepository
-import com.application.requiemproject.data.repository.TranslationRepository
 import com.application.requiemproject.managers.OverlayManager
 import com.application.requiemproject.managers.ScreenCaptureManager
+import com.application.requiemproject.model.TranslatorModel
 import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
 import com.application.requiemproject.notifications.NotificationIds
 import com.application.requiemproject.notifications.NotificationsFactory
-import com.application.requiemproject.translator.MyMemoryTranslator
 import com.application.requiemproject.utils.TagSet.SCREEN_CAPTURE_SERVICE_TAG
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -39,9 +39,7 @@ open class ScreenCaptureService: Service() {
     private val ocrRepository = OCRRepository()
     private lateinit var projectionManager: MediaProjectionManager
     private lateinit var overlayManager: OverlayManager
-    private val translationRepository = TranslationRepository(
-        MyMemoryTranslator(RetrofitClient.api)
-    )
+    private lateinit var translator: TranslatorModel
 
     // NOTIFICATIONS
     private lateinit var notificationsFactory: NotificationsFactory
@@ -71,6 +69,7 @@ open class ScreenCaptureService: Service() {
         channelManager.createNotificationChannel()
 
         // main capture
+        translator = (application as App).myMemoryTranslator
         captureManager = ScreenCaptureManager(this, projectionManager, backgroundHandler!!)
         captureManager.onProcessedCaptured = onProcessedCaptured@{ bitmap, scale, offset ->
             if (ocrJob?.isActive == true) {
@@ -83,7 +82,18 @@ open class ScreenCaptureService: Service() {
             ocrJob = serviceScope.launch(Dispatchers.Default) {
                 try {
                     val initialBlocks = ocrRepository.recognizeText(bitmap, scale, offset)
-                    val translatedBlocks = translationRepository.translateBlocks(initialBlocks)
+                    val translatedBlocks = initialBlocks.map { block ->
+                        val result = translator.translate(block.text, "en|ru")
+
+                        when (result) {
+                            is TranslationResult.Success -> {
+                                block.copy(text = result.text)
+                            }
+                            is TranslationResult.Error -> {
+                                block
+                            }
+                        }
+                    }
 
                     // Debug
                     Log.i(SCREEN_CAPTURE_SERVICE_TAG, "t_block: $translatedBlocks")
@@ -128,6 +138,7 @@ open class ScreenCaptureService: Service() {
         val data = if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
             intent?.getParcelableExtra("DATA", Intent::class.java)
         } else {
+            @Suppress("deprecation")
             intent?.getParcelableExtra("DATA")
         }
 
