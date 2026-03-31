@@ -1,4 +1,4 @@
-package com.application.requiemproject
+package com.application.requiemproject.ui
 
 import android.content.Intent
 import android.content.pm.ShortcutInfo
@@ -7,6 +7,7 @@ import android.graphics.drawable.Icon
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.application.requiemproject.R
 import com.application.requiemproject.ui.home.HomeFragment
 import com.application.requiemproject.ui.profile.ProfileFragment
 import com.application.requiemproject.ui.search.SearchFragment

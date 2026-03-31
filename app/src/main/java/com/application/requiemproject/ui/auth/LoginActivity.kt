@@ -7,7 +7,7 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.application.requiemproject.MainActivity
+import com.application.requiemproject.ui.MainActivity
 import com.application.requiemproject.R
 import com.application.requiemproject.data.local.db.AppDatabase
 import com.application.requiemproject.managers.SessionManager

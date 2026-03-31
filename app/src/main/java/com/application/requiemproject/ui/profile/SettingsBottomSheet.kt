@@ -50,7 +50,7 @@ class SettingsBottomSheet: BottomSheetDialogFragment() {
             val email = emailInputEditText.text.toString().trim()
             val userId = sm.getUserId()
 
-            if (email.isEmpty() or !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                 emailInputEditText.error = "Email is not valid"
                 return@setOnClickListener
             }
