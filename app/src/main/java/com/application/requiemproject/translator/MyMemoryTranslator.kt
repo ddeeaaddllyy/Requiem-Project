@@ -16,6 +16,8 @@ import com.application.requiemproject.model.TranslatorModel
  * Example of language pair: "en|ru" (English -> Russian)
  *
  * @property api Retrofit API used to communicate with MyMemory service.
+ * @property userDao from [com.application.requiemproject.data.local.db.AppDatabase] used to MyMemory API for more tokens for translate
+ * @property sessionManager from [SessionManager] used to get user id.
  */
 class MyMemoryTranslator(
     private val api: MyMemoryTranslationApi,

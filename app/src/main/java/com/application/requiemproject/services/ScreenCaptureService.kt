@@ -12,15 +12,19 @@ import android.os.IBinder
 import android.util.Log
 import android.widget.Toast
 import com.application.requiemproject.App
-import com.application.requiemproject.data.api.response.TranslationResult
+import com.application.requiemproject.data.api.RetrofitClient
 import com.application.requiemproject.data.repository.OCRRepository
+import com.application.requiemproject.data.repository.TranslationRepository
 import com.application.requiemproject.managers.OverlayManager
 import com.application.requiemproject.managers.ScreenCaptureManager
+import com.application.requiemproject.model.TextBlock
 import com.application.requiemproject.model.TranslatorModel
 import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
 import com.application.requiemproject.notifications.NotificationIds
 import com.application.requiemproject.notifications.NotificationsFactory
+import com.application.requiemproject.translator.MyMemoryTranslator
+import com.application.requiemproject.utils.MergeText
 import com.application.requiemproject.utils.TagSet.SCREEN_CAPTURE_SERVICE_TAG
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +32,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -40,6 +43,7 @@ open class ScreenCaptureService: Service() {
     private lateinit var projectionManager: MediaProjectionManager
     private lateinit var overlayManager: OverlayManager
     private lateinit var translator: TranslatorModel
+    private lateinit var translationRepository: TranslationRepository
 
     // NOTIFICATIONS
     private lateinit var notificationsFactory: NotificationsFactory
@@ -51,8 +55,9 @@ open class ScreenCaptureService: Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // STATE
-    private var isRunning = true
+    private var isRunning: Boolean = true
     private var ocrJob: Job? = null
+    private var lastFrameBlocks: List<TextBlock> = emptyList()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -72,43 +77,37 @@ open class ScreenCaptureService: Service() {
         translator = (application as App).myMemoryTranslator
         captureManager = ScreenCaptureManager(this, projectionManager, backgroundHandler!!)
         captureManager.onProcessedCaptured = onProcessedCaptured@{ bitmap, scale, offset ->
+
             if (ocrJob?.isActive == true) {
                 bitmap.recycle()
                 return@onProcessedCaptured
             }
 
-            ocrJob?.cancel()
-
-            ocrJob = serviceScope.launch(Dispatchers.Default) {
+            ocrJob = serviceScope.launch {
                 try {
-                    val initialBlocks = ocrRepository.recognizeText(bitmap, scale, offset)
-                    val translatedBlocks = initialBlocks.map { block ->
-                        val result = translator.translate(block.text, "en|ru")
+                    val ocrBlocks = ocrRepository.recognizeText(bitmap, scale, offset)
+                    val accBlocks = AccessibilityTextProvider.latestBlocks
 
-                        when (result) {
-                            is TranslationResult.Success -> {
-                                block.copy(text = result.text)
-                            }
-                            is TranslationResult.Error -> {
-                                block
-                            }
-                        }
+                    val mergedBlocks = MergeText.mergeAndFilter(accBlocks, ocrBlocks) // [cite: 9]
+
+                    if (mergedBlocks.isEmpty()) {
+                        withContext(Dispatchers.Main) { overlayManager.updateTextOnScreen(emptyList()) }
+                        return@launch
                     }
 
-                    // Debug
-                    Log.i(SCREEN_CAPTURE_SERVICE_TAG, "t_block: $translatedBlocks")
+                    if (mergedBlocks == lastFrameBlocks) return@launch
+                    lastFrameBlocks = mergedBlocks
 
-                    ensureActive()
+                    val translatedBlocks = translationRepository.translateBlocks(mergedBlocks)
 
                     withContext(Dispatchers.Main) {
-                        overlayManager.updateTextOnScreen(translatedBlocks)
+                        overlayManager.updateTextOnScreen(translatedBlocks) // [cite: 14]
                     }
 
                 } catch (e: Exception) {
                     if (e !is CancellationException) {
-                        Log.d(SCREEN_CAPTURE_SERVICE_TAG, "Error in onCreate(): ${e.message}")
+                        Log.e(SCREEN_CAPTURE_SERVICE_TAG, "Pipeline Error: ${e.message}") // [cite: 15]
                     }
-
                 } finally {
                     bitmap.recycle()
                 }
@@ -160,11 +159,8 @@ open class ScreenCaptureService: Service() {
     override fun onLowMemory() {
         super.onLowMemory()
         Toast.makeText(this, "You have low free memory. Be careful.", Toast.LENGTH_SHORT).show()
-        Log.i(SCREEN_CAPTURE_SERVICE_TAG, "LOW MEMORY")
-
-        // delete in future
         Log.e(SCREEN_CAPTURE_SERVICE_TAG, "OnLowMemory is active. We have to stop")
-        onDestroy()
+        stopSelf()
     }
 
     override fun onDestroy() {
