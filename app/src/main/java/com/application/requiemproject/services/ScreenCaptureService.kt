@@ -12,7 +12,6 @@ import android.os.IBinder
 import android.util.Log
 import android.widget.Toast
 import com.application.requiemproject.App
-import com.application.requiemproject.data.api.RetrofitClient
 import com.application.requiemproject.data.repository.OCRRepository
 import com.application.requiemproject.data.repository.TranslationRepository
 import com.application.requiemproject.managers.OverlayManager
@@ -23,7 +22,6 @@ import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
 import com.application.requiemproject.notifications.NotificationIds
 import com.application.requiemproject.notifications.NotificationsFactory
-import com.application.requiemproject.translator.MyMemoryTranslator
 import com.application.requiemproject.utils.MergeText
 import com.application.requiemproject.utils.TagSet.SCREEN_CAPTURE_SERVICE_TAG
 import kotlinx.coroutines.CancellationException
@@ -36,6 +34,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 open class ScreenCaptureService: Service() {
+
+    companion object {
+        const val EXTRA_USE_ACCESSIBILITY_MODE = "EXTRA_USE_ACCESSIBILITY_MODE"
+    }
 
     // DEPENDENCIES
     private lateinit var captureManager: ScreenCaptureManager
@@ -58,6 +60,7 @@ open class ScreenCaptureService: Service() {
     private var isRunning: Boolean = true
     private var ocrJob: Job? = null
     private var lastFrameBlocks: List<TextBlock> = emptyList()
+    private var useAccessibilityMode: Boolean = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -75,6 +78,7 @@ open class ScreenCaptureService: Service() {
 
         // main capture
         translator = (application as App).myMemoryTranslator
+        translationRepository = TranslationRepository(translator)
         captureManager = ScreenCaptureManager(this, projectionManager, backgroundHandler!!)
         captureManager.onProcessedCaptured = onProcessedCaptured@{ bitmap, scale, offset ->
 
@@ -86,9 +90,12 @@ open class ScreenCaptureService: Service() {
             ocrJob = serviceScope.launch {
                 try {
                     val ocrBlocks = ocrRepository.recognizeText(bitmap, scale, offset)
-                    val accBlocks = AccessibilityTextProvider.latestBlocks
-
-                    val mergedBlocks = MergeText.mergeAndFilter(accBlocks, ocrBlocks) // [cite: 9]
+                    val mergedBlocks = if (useAccessibilityMode) {
+                        val accBlocks = AccessibilityTextProvider.latestBlocks
+                        MergeText.mergeAndFilter(accBlocks, ocrBlocks)
+                    } else {
+                        MergeText.mergeAndFilter(emptyList(), ocrBlocks)
+                    }
 
                     if (mergedBlocks.isEmpty()) {
                         withContext(Dispatchers.Main) { overlayManager.updateTextOnScreen(emptyList()) }
@@ -116,6 +123,10 @@ open class ScreenCaptureService: Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.hasExtra(EXTRA_USE_ACCESSIBILITY_MODE) == true) {
+            useAccessibilityMode = intent.getBooleanExtra(EXTRA_USE_ACCESSIBILITY_MODE, false)
+        }
+
         val notification = notificationsFactory.createNotification(isRunning)
         if (intent?.action == NotificationActions.TOGGLE_CAPTURE) {
             isRunning = !isRunning
@@ -123,6 +134,8 @@ open class ScreenCaptureService: Service() {
             if (!isRunning) {
                 captureManager.stopCapture()
                 overlayManager.removeOverlay()
+            } else if (useAccessibilityMode) {
+                overlayManager.showWorkingBubble()
             }
         }
 
@@ -145,6 +158,11 @@ open class ScreenCaptureService: Service() {
         if (resultCode == -1 && data != null) {
             captureManager.startCapture(resultCode, data)
             overlayManager.showOverlay()
+            if (useAccessibilityMode) {
+                overlayManager.showWorkingBubble()
+            } else {
+                overlayManager.hideWorkingBubble()
+            }
         }
 
         return START_NOT_STICKY

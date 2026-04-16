@@ -3,4 +3,7 @@
     <string name="create_account_button_text">СОЗДАТЬ АККАУНТ</string>
     <string name="user_avatar">User\'s avatar</string>
     <string name="accessibility_description" translatable="false">The application uses AccessibilityService to retrieve text from the screen and translate it.</string>
+    <string name="SCREEN_TRANSLATOR">ЭКРАННЫЙ ПЕРЕВОДЧИК</string>
+    <string name="choose_the_lang">Выберите языки</string>
+    <string name="start_screen_capture">НАЧАТЬ ЗАХВАТ ЭКРАНА</string>
 </resources>

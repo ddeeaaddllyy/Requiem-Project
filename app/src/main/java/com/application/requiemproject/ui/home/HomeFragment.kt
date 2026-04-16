@@ -14,6 +14,7 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -21,10 +22,12 @@ import androidx.fragment.app.Fragment
 import com.application.requiemproject.R
 import com.application.requiemproject.services.ScreenCaptureService
 import androidx.core.net.toUri
+import com.google.android.material.switchmaterial.SwitchMaterial
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
     private lateinit var projectionManager: MediaProjectionManager
+    private var useAccessibilityMode: Boolean = false
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -52,6 +55,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         super.onViewCreated(view, savedInstanceState)
 
         setupLanguageDropdowns(view)
+        setupAccessibilitySwitch(view)
 
         projectionManager = requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
@@ -93,6 +97,28 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         targetInput.setAdapter(adapter)
     }
 
+    private fun setupAccessibilitySwitch(view: View) {
+        val accessibilitySwitch =
+            view.findViewById<SwitchMaterial>(R.id.button_switch_accessibility)
+        val statusText = view.findViewById<TextView>(R.id.text_accessibility_status)
+
+        updateAccessibilityStatus(statusText, accessibilitySwitch.isChecked)
+        useAccessibilityMode = accessibilitySwitch.isChecked
+
+        accessibilitySwitch.setOnCheckedChangeListener { _, isChecked ->
+            useAccessibilityMode = isChecked
+            updateAccessibilityStatus(statusText, isChecked)
+        }
+    }
+
+    private fun updateAccessibilityStatus(statusText: TextView, isEnabled: Boolean) {
+        statusText.text = if (isEnabled) {
+            "Accessibility + OCR enabled"
+        } else {
+            "OCR only mode"
+        }
+    }
+
     private fun requestScreenCapture() {
         val captureIntent = projectionManager.createScreenCaptureIntent()
         screenCaptureLauncher.launch(captureIntent)
@@ -104,6 +130,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val serviceIntent = Intent(requireContext(), ScreenCaptureService::class.java)
         serviceIntent.putExtra("RESULT_CODE", resultCode)
         serviceIntent.putExtra("DATA", data)
+        serviceIntent.putExtra(ScreenCaptureService.EXTRA_USE_ACCESSIBILITY_MODE, useAccessibilityMode)
 
         ContextCompat.startForegroundService(requireContext(), serviceIntent)
     }

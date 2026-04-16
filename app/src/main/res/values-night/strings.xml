@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="SCREEN_TRANSLATOR">ЭКРАННЫЙ ПЕРЕВОДЧИК</string>
+    <string name="choose_the_lang">Выберите языки</string>
+    <string name="start_screen_capture">НАЧАТЬ ЗАХВАТ ЭКРАНА</string>
+</resources>
