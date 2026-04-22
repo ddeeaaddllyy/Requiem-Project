@@ -3,6 +3,7 @@ package com.application.requiemproject.data.repository
 import com.application.requiemproject.data.api.response.TranslationResult
 import com.application.requiemproject.model.TextBlock
 import com.application.requiemproject.model.TranslatorModel
+import com.application.requiemproject.model.TranslationSettings
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -20,10 +21,17 @@ class TranslationRepository(
      * @param blocks List of text blocks to translate.
      * @return List of translated text blocks.
      */
-    suspend fun translateBlocks(blocks: List<TextBlock>): List<TextBlock> = coroutineScope {
+    suspend fun translateBlocks(
+        blocks: List<TextBlock>,
+        settings: TranslationSettings
+    ): List<TextBlock> = coroutineScope {
+        if (settings.sourceLanguage == settings.targetLanguage) {
+            return@coroutineScope blocks
+        }
+
         blocks.map { blocks ->
             async {
-                val result = currentTranslator.translate(blocks.text, "en|ru")
+                val result = currentTranslator.translate(blocks.text, settings.languagePair)
                 val outputText = when (result) {
                     is TranslationResult.Success -> result.text
                     is TranslationResult.Error -> blocks.text

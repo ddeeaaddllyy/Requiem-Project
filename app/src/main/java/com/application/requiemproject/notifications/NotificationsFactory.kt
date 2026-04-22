@@ -22,17 +22,18 @@ open class NotificationsFactory(
         }
 
         val actionTitle = if (isRunning) "Stop" else "Start"
+        val action = Notification.Action.Builder(
+            R.drawable.ic_notification_24,
+            actionTitle,
+            toggleIntent()
+        ).build()
 
         return Notification.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_24)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
-            .addAction(
-                R.drawable.ic_notification_24,
-                actionTitle,
-                toggleIntent()
-            )
+            .addAction(action)
             .build()
     }
 

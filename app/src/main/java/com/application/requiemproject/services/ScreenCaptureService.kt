@@ -14,9 +14,12 @@ import android.widget.Toast
 import com.application.requiemproject.App
 import com.application.requiemproject.data.repository.OCRRepository
 import com.application.requiemproject.data.repository.TranslationRepository
+import com.application.requiemproject.data.repository.TranslationSettingsRepository
 import com.application.requiemproject.managers.OverlayManager
 import com.application.requiemproject.managers.ScreenCaptureManager
+import com.application.requiemproject.model.ScanSource
 import com.application.requiemproject.model.TextBlock
+import com.application.requiemproject.model.TranslationSettings
 import com.application.requiemproject.model.TranslatorModel
 import com.application.requiemproject.notifications.NotificationActions
 import com.application.requiemproject.notifications.NotificationChannelManager
@@ -35,10 +38,6 @@ import kotlinx.coroutines.withContext
 
 open class ScreenCaptureService: Service() {
 
-    companion object {
-        const val EXTRA_USE_ACCESSIBILITY_MODE = "EXTRA_USE_ACCESSIBILITY_MODE"
-    }
-
     // DEPENDENCIES
     private lateinit var captureManager: ScreenCaptureManager
     private val ocrRepository = OCRRepository()
@@ -46,6 +45,7 @@ open class ScreenCaptureService: Service() {
     private lateinit var overlayManager: OverlayManager
     private lateinit var translator: TranslatorModel
     private lateinit var translationRepository: TranslationRepository
+    private lateinit var settingsRepository: TranslationSettingsRepository
 
     // NOTIFICATIONS
     private lateinit var notificationsFactory: NotificationsFactory
@@ -60,7 +60,8 @@ open class ScreenCaptureService: Service() {
     private var isRunning: Boolean = true
     private var ocrJob: Job? = null
     private var lastFrameBlocks: List<TextBlock> = emptyList()
-    private var useAccessibilityMode: Boolean = false
+    private var lastAccessibilityBlocks: List<TextBlock> = emptyList()
+    private lateinit var activeSettings: TranslationSettings
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -78,6 +79,8 @@ open class ScreenCaptureService: Service() {
 
         // main capture
         translator = (application as App).myMemoryTranslator
+        settingsRepository = (application as App).translationSettingsRepository
+        activeSettings = settingsRepository.getSettings()
         translationRepository = TranslationRepository(translator)
         captureManager = ScreenCaptureManager(this, projectionManager, backgroundHandler!!)
         captureManager.onProcessedCaptured = onProcessedCaptured@{ bitmap, scale, offset ->
@@ -89,26 +92,42 @@ open class ScreenCaptureService: Service() {
 
             ocrJob = serviceScope.launch {
                 try {
-                    val ocrBlocks = ocrRepository.recognizeText(bitmap, scale, offset)
-                    val mergedBlocks = if (useAccessibilityMode) {
-                        val accBlocks = AccessibilityTextProvider.latestBlocks
-                        MergeText.mergeAndFilter(accBlocks, ocrBlocks)
+                    val accessibilityBlocks = if (activeSettings.scanSource == ScanSource.ACCESSIBILITY) {
+                        MergeText.filterValidBlocks(AccessibilityTextProvider.latestBlocks)
                     } else {
-                        MergeText.mergeAndFilter(emptyList(), ocrBlocks)
+                        emptyList()
+                    }
+                    val scanBlocks = when (activeSettings.scanSource) {
+                        ScanSource.ACCESSIBILITY -> accessibilityBlocks
+                        ScanSource.OCR -> MergeText.filterValidBlocks(
+                            ocrRepository.recognizeText(bitmap, scale, offset)
+                        )
                     }
 
-                    if (mergedBlocks.isEmpty()) {
-                        withContext(Dispatchers.Main) { overlayManager.updateTextOnScreen(emptyList()) }
+                    if (scanBlocks.isEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            overlayManager.updateTextOnScreen(emptyList())
+                            overlayManager.updateAccessibilityOverlay(accessibilityBlocks)
+                        }
+                        lastFrameBlocks = emptyList()
+                        lastAccessibilityBlocks = accessibilityBlocks
                         return@launch
                     }
 
-                    if (mergedBlocks == lastFrameBlocks) return@launch
-                    lastFrameBlocks = mergedBlocks
+                    if (scanBlocks == lastFrameBlocks && accessibilityBlocks == lastAccessibilityBlocks) {
+                        return@launch
+                    }
+                    lastFrameBlocks = scanBlocks
+                    lastAccessibilityBlocks = accessibilityBlocks
 
-                    val translatedBlocks = translationRepository.translateBlocks(mergedBlocks)
+                    val translatedBlocks = translationRepository.translateBlocks(
+                        scanBlocks,
+                        activeSettings
+                    )
 
                     withContext(Dispatchers.Main) {
-                        overlayManager.updateTextOnScreen(translatedBlocks) // [cite: 14]
+                        overlayManager.updateTextOnScreen(translatedBlocks)
+                        overlayManager.updateAccessibilityOverlay(accessibilityBlocks)
                     }
 
                 } catch (e: Exception) {
@@ -123,9 +142,7 @@ open class ScreenCaptureService: Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.hasExtra(EXTRA_USE_ACCESSIBILITY_MODE) == true) {
-            useAccessibilityMode = intent.getBooleanExtra(EXTRA_USE_ACCESSIBILITY_MODE, false)
-        }
+        activeSettings = settingsRepository.getSettings()
 
         val notification = notificationsFactory.createNotification(isRunning)
         if (intent?.action == NotificationActions.TOGGLE_CAPTURE) {
@@ -134,8 +151,6 @@ open class ScreenCaptureService: Service() {
             if (!isRunning) {
                 captureManager.stopCapture()
                 overlayManager.removeOverlay()
-            } else if (useAccessibilityMode) {
-                overlayManager.showWorkingBubble()
             }
         }
 
@@ -158,11 +173,7 @@ open class ScreenCaptureService: Service() {
         if (resultCode == -1 && data != null) {
             captureManager.startCapture(resultCode, data)
             overlayManager.showOverlay()
-            if (useAccessibilityMode) {
-                overlayManager.showWorkingBubble()
-            } else {
-                overlayManager.hideWorkingBubble()
-            }
+            overlayManager.updateAccessibilityOverlay(emptyList())
         }
 
         return START_NOT_STICKY

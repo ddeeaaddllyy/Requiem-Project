@@ -4,16 +4,19 @@ import android.graphics.Rect
 import com.application.requiemproject.model.TextBlock
 
 object MergeText {
+    private val textRegex = Regex(".*[\\p{L}\\p{N}].*")
+
+    fun filterValidBlocks(blocks: List<TextBlock>): List<TextBlock> {
+        return blocks.filter { it.text.isNotBlank() && it.text.matches(textRegex) }
+    }
+
     fun mergeAndFilter(
         accBlocks: List<TextBlock>,
         ocrBlocks: List<TextBlock>
     ): List<TextBlock> {
-
-        val validAcc = accBlocks.filter { it.text.isNotBlank() && !it.text.matches(Regex("^[^a-zA-Zа-яА-Я]+$")) }
-        val validOcr = ocrBlocks.filter { it.text.isNotBlank() && !it.text.matches(Regex("^[^a-zA-Zа-яА-Я]+$")) }
-
+        val validAcc = filterValidBlocks(accBlocks)
+        val validOcr = filterValidBlocks(ocrBlocks)
         val result = validAcc.toMutableList()
-
 
         for (ocrBlock in validOcr) {
             val ocrRect = ocrBlock.boundingBox ?: continue
