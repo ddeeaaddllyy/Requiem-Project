@@ -18,16 +18,25 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
-import com.application.requiemproject.R
-import com.application.requiemproject.services.ScreenCaptureService
 import androidx.core.net.toUri
+import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
+import com.application.requiemproject.App
+import com.application.requiemproject.R
+import com.application.requiemproject.model.AppLanguage
+import com.application.requiemproject.model.ScanSource
+import com.application.requiemproject.services.ScreenCaptureService
 import com.google.android.material.switchmaterial.SwitchMaterial
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
     private lateinit var projectionManager: MediaProjectionManager
-    private var useAccessibilityMode: Boolean = false
+    private lateinit var sourceInput: AutoCompleteTextView
+    private lateinit var targetInput: AutoCompleteTextView
+    private val settingsRepository by lazy {
+        (requireActivity().application as App).translationSettingsRepository
+    }
+
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -42,13 +51,18 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         ActivityResultContracts.RequestPermission()
     ) { result ->
         if (result) {
-            Toast.makeText(requireContext(), "notification permission RECEIVED", Toast.LENGTH_SHORT)
-                .show()
+            Toast.makeText(
+                requireContext(),
+                "notification permission RECEIVED",
+                Toast.LENGTH_SHORT
+            ).show()
         } else {
-            Toast.makeText(requireContext(), "notification permission DENIED", Toast.LENGTH_SHORT)
-                .show()
+            Toast.makeText(
+                requireContext(),
+                "notification permission DENIED",
+                Toast.LENGTH_SHORT
+            ).show()
         }
-
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -57,27 +71,28 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         setupLanguageDropdowns(view)
         setupAccessibilitySwitch(view)
 
-        projectionManager = requireContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        projectionManager = requireContext().getSystemService(
+            Context.MEDIA_PROJECTION_SERVICE
+        ) as MediaProjectionManager
 
-        val startButton = view.findViewById<Button>(R.id.button_start_translation)
-        startButton.setOnClickListener {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (ContextCompat.checkSelfPermission(
-                        requireContext(),
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ) != PackageManager.PERMISSION_GRANTED
-                ) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    return@setOnClickListener
-                }
+        view.findViewById<Button>(R.id.button_start_translation).setOnClickListener {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return@setOnClickListener
             }
 
             if (!canDrawOverlays(requireContext())) {
-                val intent = Intent(
-                    ACTION_MANAGE_OVERLAY_PERMISSION,
-                    "package:${requireContext().packageName}".toUri()
+                startActivity(
+                    Intent(
+                        ACTION_MANAGE_OVERLAY_PERMISSION,
+                        "package:${requireContext().packageName}".toUri()
+                    )
                 )
-                startActivity(intent)
                 return@setOnClickListener
             }
 
@@ -86,53 +101,89 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun setupLanguageDropdowns(view: View) {
-        val languages = listOf("English", "Russian", "Japanese", "German", "French")
-        val adapter =
-            ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, languages)
+        val settings = settingsRepository.getSettings()
+        val adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            AppLanguage.entries.map(AppLanguage::displayName)
+        )
 
-        val sourceInput = view.findViewById<AutoCompleteTextView>(R.id.input_source_lang)
-        val targetInput = view.findViewById<AutoCompleteTextView>(R.id.input_target_lang)
+        sourceInput = view.findViewById(R.id.input_source_lang)
+        targetInput = view.findViewById(R.id.input_target_lang)
 
         sourceInput.setAdapter(adapter)
         targetInput.setAdapter(adapter)
+        sourceInput.setText(settings.sourceLanguage.displayName, false)
+        targetInput.setText(settings.targetLanguage.displayName, false)
+
+        sourceInput.setOnItemClickListener { _, _, position, _ ->
+            settingsRepository.updateSourceLanguage(AppLanguage.entries[position])
+        }
+        targetInput.setOnItemClickListener { _, _, position, _ ->
+            settingsRepository.updateTargetLanguage(AppLanguage.entries[position])
+        }
     }
 
     private fun setupAccessibilitySwitch(view: View) {
-        val accessibilitySwitch =
-            view.findViewById<SwitchMaterial>(R.id.button_switch_accessibility)
+        val settings = settingsRepository.getSettings()
+        val accessibilitySwitch = view.findViewById<SwitchMaterial>(R.id.button_switch_accessibility)
         val statusText = view.findViewById<TextView>(R.id.text_accessibility_status)
+        val warningText = view.findViewById<TextView>(R.id.text_accessibility_warning)
 
-        updateAccessibilityStatus(statusText, accessibilitySwitch.isChecked)
-        useAccessibilityMode = accessibilitySwitch.isChecked
+        accessibilitySwitch.isChecked = settings.scanSource == ScanSource.ACCESSIBILITY
+        updateAccessibilityModeUi(statusText, warningText, accessibilitySwitch.isChecked)
 
         accessibilitySwitch.setOnCheckedChangeListener { _, isChecked ->
-            useAccessibilityMode = isChecked
-            updateAccessibilityStatus(statusText, isChecked)
+            settingsRepository.updateScanSource(
+                if (isChecked) ScanSource.ACCESSIBILITY else ScanSource.OCR
+            )
+            updateAccessibilityModeUi(statusText, warningText, isChecked)
         }
     }
 
-    private fun updateAccessibilityStatus(statusText: TextView, isEnabled: Boolean) {
+    private fun updateAccessibilityModeUi(
+        statusText: TextView,
+        warningText: TextView,
+        isEnabled: Boolean
+    ) {
         statusText.text = if (isEnabled) {
-            "Accessibility + OCR enabled"
+            getString(R.string.accessibility_mode_enabled)
         } else {
-            "OCR only mode"
+            getString(R.string.ocr_only_mode)
         }
+        warningText.isVisible = isEnabled
     }
 
     private fun requestScreenCapture() {
-        val captureIntent = projectionManager.createScreenCaptureIntent()
-        screenCaptureLauncher.launch(captureIntent)
+        screenCaptureLauncher.launch(projectionManager.createScreenCaptureIntent())
     }
 
     private fun startBackgroundWork(resultCode: Int, data: Intent) {
-        Toast.makeText(requireContext(), "Запуск в фоне...", Toast.LENGTH_SHORT).show()
+        persistLanguageSelection()
+        Toast.makeText(requireContext(), "Starting capture in background...", Toast.LENGTH_SHORT)
+            .show()
 
-        val serviceIntent = Intent(requireContext(), ScreenCaptureService::class.java)
-        serviceIntent.putExtra("RESULT_CODE", resultCode)
-        serviceIntent.putExtra("DATA", data)
-        serviceIntent.putExtra(ScreenCaptureService.EXTRA_USE_ACCESSIBILITY_MODE, useAccessibilityMode)
+        val serviceIntent = Intent(requireContext(), ScreenCaptureService::class.java).apply {
+            putExtra("RESULT_CODE", resultCode)
+            putExtra("DATA", data)
+        }
 
         ContextCompat.startForegroundService(requireContext(), serviceIntent)
     }
 
+    private fun persistLanguageSelection() {
+        val currentSettings = settingsRepository.getSettings()
+        settingsRepository.updateSourceLanguage(
+            AppLanguage.fromDisplayName(
+                sourceInput.text?.toString(),
+                currentSettings.sourceLanguage
+            )
+        )
+        settingsRepository.updateTargetLanguage(
+            AppLanguage.fromDisplayName(
+                targetInput.text?.toString(),
+                currentSettings.targetLanguage
+            )
+        )
+    }
 }

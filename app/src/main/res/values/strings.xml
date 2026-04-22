@@ -6,4 +6,7 @@
     <string name="SCREEN_TRANSLATOR">ЭКРАННЫЙ ПЕРЕВОДЧИК</string>
     <string name="choose_the_lang">Выберите языки</string>
     <string name="start_screen_capture">НАЧАТЬ ЗАХВАТ ЭКРАНА</string>
+    <string name="accessibility_mode_enabled">Accessibility + OCR enabled</string>
+    <string name="ocr_only_mode">OCR only mode</string>
+    <string name="accessibility_warning">Warning: accessibility mode scans all visible text on the screen to improve matching accuracy. The accessibility service itself does not send this scan anywhere.</string>
 </resources>
